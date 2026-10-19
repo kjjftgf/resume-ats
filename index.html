@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>简历 ATS 匹配检测 · 10 秒看你的简历能不能过机筛</title>
+<meta name="description" content="粘贴简历和目标岗位 JD，10 秒检测关键词命中率、缺失关键词、弱动词、量化结果，判断简历能不能过 ATS 机筛。纯本地计算，不上传。">
+<style>
+  :root{
+    --ink:#161a23; --sub:#5b6472; --line:#e6e8ee; --bg:#f7f8fb;
+    --blue:#1f4fd8; --blue-soft:#eaf0ff; --red:#c9333e; --amber:#b7791f; --green:#12a05c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+  .wrap{max-width:960px;margin:0 auto;padding:32px 20px 80px}
+  header{margin-bottom:24px}
+  h1{font-size:30px;margin:0 0 8px;letter-spacing:-.5px}
+  .lead{color:var(--sub);font-size:15px;margin:0}
+  .badge{display:inline-block;background:var(--blue-soft);color:var(--blue);font-size:12px;padding:3px 9px;border-radius:99px;margin-bottom:12px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+  label{display:block;font-size:13px;color:var(--sub);margin-bottom:6px;font-weight:600}
+  textarea{width:100%;min-height:220px;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:14px;font-family:inherit;resize:vertical;background:#fcfcfe}
+  textarea:focus{outline:none;border-color:var(--blue)}
+  .row{display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap}
+  button{background:var(--blue);color:#fff;border:0;border-radius:10px;padding:12px 22px;font-size:15px;font-weight:600;cursor:pointer}
+  button:hover{opacity:.92}
+  button.ghost{background:#fff;color:var(--blue);border:1px solid var(--blue)}
+  .hint{font-size:12px;color:var(--sub)}
+  #result{margin-top:28px;display:none}
+  .score-card{display:flex;gap:24px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;flex-wrap:wrap}
+  .ring{width:120px;height:120px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--blue) 0deg, var(--blue) 0deg, #eef0f5 0deg);flex:0 0 auto}
+  .ring-inner{width:94px;height:94px;background:#fff;border-radius:50%;display:grid;place-items:center;text-align:center}
+  .ring-num{font-size:30px;font-weight:800;line-height:1}
+  .ring-lbl{font-size:11px;color:var(--sub)}
+  .score-info h3{margin:0 0 6px;font-size:18px}
+  .score-info p{margin:0;color:var(--sub);font-size:14px}
+  .bar{height:8px;background:#eef0f5;border-radius:99px;overflow:hidden;margin-top:10px;width:280px;max-width:100%}
+  .bar > i{display:block;height:100%;background:var(--blue);width:0}
+  section{margin-top:20px}
+  h2{font-size:16px;margin:0 0 10px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{font-size:13px;padding:5px 11px;border-radius:99px;border:1px solid var(--line);background:#fff}
+  .chip.miss{border-color:#f3c9cd;background:#fdf1f2;color:var(--red)}
+  .chip.hit{border-color:#c7ecd9;background:#effaf4;color:#0d7a48}
+  ul.checks{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+  ul.checks li{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  ul.checks .t{font-weight:700;font-size:14px}
+  ul.checks .d{color:var(--sub);font-size:13px;margin-top:2px}
+  li.warn{border-left:4px solid var(--amber)}
+  li.error{border-left:4px solid var(--red)}
+  li.ok{border-left:4px solid var(--green)}
+  .cta{margin-top:28px;background:linear-gradient(135deg,#1f4fd8,#3a6cf0);color:#fff;border-radius:16px;padding:22px}
+  .cta h3{margin:0 0 6px;font-size:18px}
+  .cta p{margin:0;opacity:.92;font-size:14px}
+  footer{margin-top:26px;color:var(--sub);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="badge">本地计算 · 不上传任何内容</div>
+    <h1>简历 ATS 匹配检测</h1>
+    <p class="lead">粘贴你的简历和目标岗位 JD，10 秒告诉你：关键词命中多少、缺哪些、还有哪些硬伤。</p>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <label for="resume">你的简历正文</label>
+      <textarea id="resume" placeholder="把简历文字粘贴到这里（图片里的文字识别后再贴）"></textarea>
+    </div>
+    <div class="card">
+      <label for="jd">目标岗位 JD</label>
+      <textarea id="jd" placeholder="把招聘网站的岗位职责和要求粘贴到这里"></textarea>
+    </div>
+  </div>
+
+  <div class="row">
+    <button id="go">开始检测</button>
+    <button class="ghost" id="demo">填入示例</button>
+    <span class="hint">不填 JD 也可以，只做简历体检</span>
+  </div>
+
+  <div id="result">
+    <div class="score-card">
+      <div class="ring" id="ring"><div class="ring-inner"><div><div class="ring-num" id="scoreNum">--</div><div class="ring-lbl">匹配分</div></div></div></div>
+      <div class="score-info">
+        <h3 id="scoreTitle">等待检测</h3>
+        <p id="scoreDesc"></p>
+        <div class="bar"><i id="coverageBar"></i></div>
+        <p class="hint" id="coverageText" style="margin-top:6px"></p>
+      </div>
+    </div>
+
+    <section id="missingSec">
+      <h2>缺失关键词（建议补进简历）</h2>
+      <div class="chips" id="missing"></div>
+    </section>
+
+    <section id="matchedSec">
+      <h2>已命中关键词</h2>
+      <div class="chips" id="matched"></div>
+    </section>
+
+    <section>
+      <h2>简历体检</h2>
+      <ul class="checks" id="checks"></ul>
+    </section>
+  </div>
+
+  <div class="cta">
+    <h3>想让人帮你改，而不只是检测？</h3>
+    <p>按目标岗位重排结构、把职责改成可量化结果、逐条对齐 JD 关键词。基础优化 ¥19.9 起，深度重写 ¥49.9 起，当天交付，免费改 2 轮。在小红书或闲鱼搜「简历优化」找到我即可。</p>
+  </div>
+
+  <footer>
+    说明：本工具在浏览器本地完成计算，简历内容不会上传到任何服务器。评分仅基于关键词与常见简历规范，不代表企业真实筛选结果。
+  </footer>
+</div>
+
+<script src="keywords.js"></script>
+<script src="analyze.js"></script>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var DEMO_RESUME = "张三\n手机 138-0000-0000 邮箱 zhang@email.com\n教育背景 某某大学 市场营销 本科 2018-2022\n工作经历\n某公司 产品助理 2022.07-至今\n负责用户需求梳理，参与需求评审，跟进版本迭代\n协助运营活动，配合跨部门协作\n项目经历\n主导上线会员体系，转化率提升 18%，覆盖 12 万用户\n搭建数据看板，日活提升 23%\n技能 SQL Excel 数据分析 原型 PRD";
+  var DEMO_JD = "岗位职责：\n1. 负责产品需求分析与 PRD 文档撰写；\n2. 与研发、设计协作，推动版本迭代落地；\n3. 通过数据分析（SQL、Excel）优化转化率；\n4. 参与竞品分析与用户研究。\n任职要求：\n本科及以上，3 年产品经验，熟悉 A/B测试、埋点、用户增长。";
+
+  function el(tag, cls, text){ var e=document.createElement(tag); if(cls)e.className=cls; if(text!=null)e.textContent=text; return e; }
+
+  function render(out){
+    $("result").style.display = "block";
+    var score = out.score;
+    var ring = $("ring");
+    if (score == null){
+      $("scoreNum").textContent = "—";
+      ring.style.background = "conic-gradient(var(--blue) 0deg, var(--blue) 0deg, #eef0f5 0deg)";
+      $("scoreTitle").textContent = "只做了简历体检";
+      $("scoreDesc").textContent = "没有填 JD，无法计算关键词命中率。";
+      $("coverageBar").style.width = "0%";
+      $("coverageText").textContent = "";
+      $("missingSec").style.display = "none";
+      $("matchedSec").style.display = "none";
+    } else {
+      var deg = score * 3.6;
+      var color = score >= 70 ? "var(--green)" : (score >= 45 ? "var(--blue)" : "var(--red)");
+      ring.style.background = "conic-gradient(" + color + " " + deg + "deg, #eef0f5 " + deg + "deg)";
+      $("scoreNum").textContent = score;
+      $("scoreTitle").textContent = score >= 70 ? "关键词覆盖不错" : (score >= 45 ? "有硬伤，建议改完再投" : "大概率过不了机筛");
+      $("scoreDesc").textContent = "命中 " + out.stats.matched + " / " + out.stats.jdKeywords + " 个 JD 关键词";
+      $("coverageBar").style.width = out.coverage + "%";
+      $("coverageText").textContent = "关键词覆盖率 " + out.coverage + "%｜量化结果 " + out.stats.quant + " 处｜弱动词 " + out.stats.weakVerbs + " 处";
+
+      $("missingSec").style.display = "block";
+      $("matchedSec").style.display = "block";
+      var miss = $("missing"); miss.innerHTML = "";
+      if (out.missing.length === 0) miss.appendChild(el("span","chip hit","没有缺失，关键词覆盖完整"));
+      out.missing.forEach(function(k){ miss.appendChild(el("span","chip miss",k)); });
+      var hit = $("matched"); hit.innerHTML = "";
+      out.matched.forEach(function(k){ hit.appendChild(el("span","chip hit",k)); });
+    }
+
+    var box = $("checks"); box.innerHTML = "";
+    out.checks.forEach(function(c){
+      var li = el("li", c.level);
+      li.appendChild(el("div","t",c.title));
+      li.appendChild(el("div","d",c.desc));
+      box.appendChild(li);
+    });
+  }
+
+  $("go").addEventListener("click", function(){
+    var out = ResumeATS.analyze($("resume").value, $("jd").value);
+    render(out);
+    $("result").scrollIntoView({behavior:"smooth", block:"start"});
+  });
+  $("demo").addEventListener("click", function(){
+    $("resume").value = DEMO_RESUME;
+    $("jd").value = DEMO_JD;
+  });
+})();
+</script>
+</body>
+</html>
